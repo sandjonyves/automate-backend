@@ -14,6 +14,10 @@ from .algorithme.automate_analysis import identify_states
 from .algorithme.automate_emondage import emonder_automate
 from .algorithme.epsilon_conversion import afn_to_epsilon_afn, epsilon_afn_to_afn
 from .algorithme.epsilon_closure import epsilon_closure
+from .algorithme.epsilon_afn_to_afd import epsilon_afn_to_afd
+
+from .algorithme.afd_to_epsilon_afn import afd_to_epsilon_afn
+
 
 
 class AutomateViewSet(viewsets.ModelViewSet):
@@ -228,4 +232,59 @@ class EpsilonClosureView(APIView):
         return Response({
             "state": state_name,
             "epsilon_closure": closure
+        }, status=200)
+    
+
+
+
+
+
+class EpsilonAFNToAFDView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if automate.is_deterministic:
+            return Response({"error": "This automate is already deterministic."}, status=400)
+
+        if "ε" not in automate.alphabet:
+            return Response({"error": "This automate has no ε-transitions to eliminate."}, status=400)
+
+        result = epsilon_afn_to_afd(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            transitions=automate.transitions,
+            initial_state=automate.initial_state,
+            final_states=automate.final_states
+        )
+
+        return Response(result, status=200)
+    
+
+
+
+class AFDToEpsilonAFNView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if not automate.is_deterministic:
+            return Response({"error": "This automate is not deterministic (AFD required)."}, status=400)
+
+        result = afd_to_epsilon_afn(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            transitions=automate.transitions
+        )
+
+        return Response({
+            "states": automate.states,
+            "alphabet": automate.alphabet + ["ε"] if "ε" not in automate.alphabet else automate.alphabet,
+            "initial_state": automate.initial_state,
+            "final_states": automate.final_states,
+            "transitions": result
         }, status=200)

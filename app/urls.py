@@ -9,6 +9,10 @@ from .views import AutomateStateAnalysisView
 from .views import AutomateEmondageView
 from .views import AFNToEpsilonAFNView, EpsilonAFNToAFNView
 from .views import EpsilonClosureView
+from .views import EpsilonAFNToAFDView
+from .views import AFDToEpsilonAFNView
+
+
 router = DefaultRouter()
 router.register(r'automates', AutomateViewSet)
 
@@ -23,6 +27,8 @@ urlpatterns = [
  path("automates/<int:pk>/to-epsilon-afn/", AFNToEpsilonAFNView.as_view(), name="afn-to-epsilon-afn"),
   path("automates/<int:pk>/from-epsilon-afn/", EpsilonAFNToAFNView.as_view(), name="epsilon-afn-to-afn"),
   path("automates/<int:pk>/epsilon-closure/<str:state_name>/", EpsilonClosureView.as_view(), name="epsilon-closure"),
+  path("automates/<int:pk>/from-epsilon-afn-to-afd/", EpsilonAFNToAFDView.as_view(), name="epsilon-afn-to-afd"),
+  path("automates/<int:pk>/to-epsilon-afn-from-afd/", AFDToEpsilonAFNView.as_view(), name="afd-to-epsilon-afn"),
 ]
 
 
