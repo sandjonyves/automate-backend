@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
 from .models import Automate
 from .serializers import AutomateSerializer
 from .serializers import EquationSystemSerializer
@@ -8,7 +9,9 @@ from .serializers import AutomateSerializer
 from .algorithme.afn_to_afd import afn_to_afd
 from .algorithme.equation_to_regex import arden_resolution
 from .algorithme.automate_to_regex import automate_to_regex
-
+from .algorithme.afd_to_afdc import afd_to_afdc
+from .algorithme.automate_analysis import identify_states
+from .algorithme.automate_emondage import emonder_automate
 
 
 class AutomateViewSet(viewsets.ModelViewSet):
@@ -84,3 +87,69 @@ class RegexFromAutomateAPIView(APIView):
         return Response({"regex": expression})
         # except Exception as e:
         #     return Response({"error": str(e)}, status=400)
+
+
+
+class AFDToAFDCView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not automate.is_deterministic:
+            return Response({"error": "Automaton must be deterministic (AFD)."}, status=400)
+
+        # Appel de l'algorithme de complétion
+        result = afd_to_afdc(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            transitions=automate.transitions
+        )
+
+        # Réponse complète avec les champs attendus par le frontend
+        return Response({
+            "states": result["states"],
+            "alphabet": result["alphabet"],
+            "transitions": result["transitions"],
+            "sink_state": result["sink_state"],
+            "initial_state": automate.initial_state,
+            "final_states": automate.final_states
+        }, status=200)
+    
+
+    
+class AutomateStateAnalysisView(APIView):
+    def get(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        result = identify_states(
+            states=automate.states,
+            initial_state=automate.initial_state,
+            final_states=automate.final_states,
+            transitions=automate.transitions
+        )
+
+        return Response(result, status=200)
+
+
+
+class AutomateEmondageView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        result = emonder_automate(
+            states=automate.states,
+            initial_state=automate.initial_state,
+            final_states=automate.final_states,
+            transitions=automate.transitions,
+            alphabet=automate.alphabet
+        )
+
+        return Response(result, status=200)
