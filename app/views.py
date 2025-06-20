@@ -13,7 +13,7 @@ from .algorithme.afd_to_afdc import afd_to_afdc
 from .algorithme.automate_analysis import identify_states
 from .algorithme.automate_emondage import emonder_automate
 from .algorithme.epsilon_conversion import afn_to_epsilon_afn, epsilon_afn_to_afn
-from app.algorithme.epsilon_closure import epsilon_closure
+from .algorithme.epsilon_closure import epsilon_closure
 
 
 class AutomateViewSet(viewsets.ModelViewSet):
