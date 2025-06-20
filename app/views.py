@@ -13,6 +13,7 @@ from .algorithme.afd_to_afdc import afd_to_afdc
 from .algorithme.automate_analysis import identify_states
 from .algorithme.automate_emondage import emonder_automate
 from .algorithme.epsilon_conversion import afn_to_epsilon_afn, epsilon_afn_to_afn
+from app.algorithme.epsilon_closure import epsilon_closure
 
 
 class AutomateViewSet(viewsets.ModelViewSet):
@@ -203,4 +204,28 @@ class EpsilonAFNToAFNView(APIView):
             "initial_state": automate.initial_state,
             "final_states": automate.final_states,
             "transitions": result
+        }, status=200)
+    
+
+
+
+
+class EpsilonClosureView(APIView):
+    def get(self, request, pk, state_name):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if "ε" not in [str(a) for a in automate.alphabet]:
+            return Response({"error": "This automate has no ε-transitions."}, status=400)
+
+        state_name = str(state_name)
+        if state_name not in [str(s) for s in automate.states]:
+            return Response({"error": f"State '{state_name}' not found in automate."}, status=404)
+
+        closure = epsilon_closure(state_name, automate.transitions)
+        return Response({
+            "state": state_name,
+            "epsilon_closure": closure
         }, status=200)
