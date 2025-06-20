@@ -12,6 +12,7 @@ from .algorithme.automate_to_regex import automate_to_regex
 from .algorithme.afd_to_afdc import afd_to_afdc
 from .algorithme.automate_analysis import identify_states
 from .algorithme.automate_emondage import emonder_automate
+from .algorithme.epsilon_conversion import afn_to_epsilon_afn, epsilon_afn_to_afn
 
 
 class AutomateViewSet(viewsets.ModelViewSet):
@@ -153,3 +154,53 @@ class AutomateEmondageView(APIView):
         )
 
         return Response(result, status=200)
+    
+
+
+class AFNToEpsilonAFNView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if automate.is_deterministic:
+            return Response({"error": "Must be an AFN to convert to epsilon-AFN."}, status=400)
+
+        result = afn_to_epsilon_afn(
+            states=automate.states,
+            transitions=automate.transitions
+        )
+
+        return Response({
+            "states": automate.states,
+            "alphabet": automate.alphabet,
+            "initial_state": automate.initial_state,
+            "final_states": automate.final_states,
+            "transitions": result
+        }, status=200)
+
+
+class EpsilonAFNToAFNView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if automate.is_deterministic:
+            return Response({"error": "Not an epsilon-AFN (automate already deterministic)."}, status=400)
+
+        result = epsilon_afn_to_afn(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            transitions=automate.transitions
+        )
+
+        return Response({
+            "states": automate.states,
+            "alphabet": [a for a in automate.alphabet if a != "ε"],
+            "initial_state": automate.initial_state,
+            "final_states": automate.final_states,
+            "transitions": result
+        }, status=200)
