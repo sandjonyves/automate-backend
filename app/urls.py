@@ -4,7 +4,11 @@ from django.urls import path, include
 from .views import RegexFromEquationsAPIView
 from .views import ConvertAFNtoAFDByIdAPIView
 from .views import RegexFromAutomateAPIView
-
+from .views  import AFDToAFDCView
+from .views import AutomateStateAnalysisView
+from .views import AutomateEmondageView
+from .views import AFNToEpsilonAFNView, EpsilonAFNToAFNView
+from .views import EpsilonClosureView
 router = DefaultRouter()
 router.register(r'automates', AutomateViewSet)
 
@@ -13,5 +17,12 @@ urlpatterns = [
      path('regex/from-equations/', RegexFromEquationsAPIView.as_view()),
       path('automates/<int:automate_id>/convert/', ConvertAFNtoAFDByIdAPIView.as_view()),
       path('automates/<int:automate_id>/to-regex/', RegexFromAutomateAPIView.as_view()),
-
+    path("automates/<int:pk>/complete/", AFDToAFDCView.as_view(), name="afd-to-afdc"),
+ path("automates/<int:pk>/states-analysis/", AutomateStateAnalysisView.as_view(), name="automate-state-analysis"),
+ path("automates/<int:pk>/emondage/", AutomateEmondageView.as_view(), name="automate-emondage"),
+ path("automates/<int:pk>/to-epsilon-afn/", AFNToEpsilonAFNView.as_view(), name="afn-to-epsilon-afn"),
+  path("automates/<int:pk>/from-epsilon-afn/", EpsilonAFNToAFNView.as_view(), name="epsilon-afn-to-afn"),
+  path("automates/<int:pk>/epsilon-closure/<str:state_name>/", EpsilonClosureView.as_view(), name="epsilon-closure"),
 ]
+
+

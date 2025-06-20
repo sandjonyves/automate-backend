@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
 from .models import Automate
 from .serializers import AutomateSerializer
 from .serializers import EquationSystemSerializer
@@ -8,7 +9,11 @@ from .serializers import AutomateSerializer
 from .algorithme.afn_to_afd import afn_to_afd
 from .algorithme.equation_to_regex import arden_resolution
 from .algorithme.automate_to_regex import automate_to_regex
-
+from .algorithme.afd_to_afdc import afd_to_afdc
+from .algorithme.automate_analysis import identify_states
+from .algorithme.automate_emondage import emonder_automate
+from .algorithme.epsilon_conversion import afn_to_epsilon_afn, epsilon_afn_to_afn
+from app.algorithme.epsilon_closure import epsilon_closure
 
 
 class AutomateViewSet(viewsets.ModelViewSet):
@@ -84,3 +89,143 @@ class RegexFromAutomateAPIView(APIView):
         return Response({"regex": expression})
         # except Exception as e:
         #     return Response({"error": str(e)}, status=400)
+
+
+
+class AFDToAFDCView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not automate.is_deterministic:
+            return Response({"error": "Automaton must be deterministic (AFD)."}, status=400)
+
+        # Appel de l'algorithme de complétion
+        result = afd_to_afdc(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            transitions=automate.transitions
+        )
+
+        # Réponse complète avec les champs attendus par le frontend
+        return Response({
+            "states": result["states"],
+            "alphabet": result["alphabet"],
+            "transitions": result["transitions"],
+            "sink_state": result["sink_state"],
+            "initial_state": automate.initial_state,
+            "final_states": automate.final_states
+        }, status=200)
+    
+
+    
+class AutomateStateAnalysisView(APIView):
+    def get(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        result = identify_states(
+            states=automate.states,
+            initial_state=automate.initial_state,
+            final_states=automate.final_states,
+            transitions=automate.transitions
+        )
+
+        return Response(result, status=200)
+
+
+
+class AutomateEmondageView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        result = emonder_automate(
+            states=automate.states,
+            initial_state=automate.initial_state,
+            final_states=automate.final_states,
+            transitions=automate.transitions,
+            alphabet=automate.alphabet
+        )
+
+        return Response(result, status=200)
+    
+
+
+class AFNToEpsilonAFNView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if automate.is_deterministic:
+            return Response({"error": "Must be an AFN to convert to epsilon-AFN."}, status=400)
+
+        result = afn_to_epsilon_afn(
+            states=automate.states,
+            transitions=automate.transitions
+        )
+
+        return Response({
+            "states": automate.states,
+            "alphabet": automate.alphabet,
+            "initial_state": automate.initial_state,
+            "final_states": automate.final_states,
+            "transitions": result
+        }, status=200)
+
+
+class EpsilonAFNToAFNView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if automate.is_deterministic:
+            return Response({"error": "Not an epsilon-AFN (automate already deterministic)."}, status=400)
+
+        result = epsilon_afn_to_afn(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            transitions=automate.transitions
+        )
+
+        return Response({
+            "states": automate.states,
+            "alphabet": [a for a in automate.alphabet if a != "ε"],
+            "initial_state": automate.initial_state,
+            "final_states": automate.final_states,
+            "transitions": result
+        }, status=200)
+    
+
+
+
+
+class EpsilonClosureView(APIView):
+    def get(self, request, pk, state_name):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if "ε" not in [str(a) for a in automate.alphabet]:
+            return Response({"error": "This automate has no ε-transitions."}, status=400)
+
+        state_name = str(state_name)
+        if state_name not in [str(s) for s in automate.states]:
+            return Response({"error": f"State '{state_name}' not found in automate."}, status=404)
+
+        closure = epsilon_closure(state_name, automate.transitions)
+        return Response({
+            "state": state_name,
+            "epsilon_closure": closure
+        }, status=200)
