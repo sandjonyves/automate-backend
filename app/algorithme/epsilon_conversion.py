@@ -1,40 +1,33 @@
 from collections import defaultdict
 
-def afn_to_epsilon_afn(states, initial_states, transitions):
-    """
-    Convertit un AFN en AFN-ε en ajoutant un nouvel état avec une transition ε vers les anciens états initiaux.
-    
-    :param states: Liste des états (ex. ["q0", "q1"])
-    :param initial_states: Liste des anciens états initiaux (ex. ["q0"])
-    :param transitions: Dictionnaire des transitions (ex. {"q0": {"a": ["q1"]}})
-    :return: Dictionnaire contenant les nouveaux états, transitions, et nouvel état initial
-    """
+import random
 
-    states = [str(s) for s in states]
-    initial_states = [str(s) for s in initial_states]
-    transitions = {str(k): {a: list(map(str, v)) for a, v in sym.items()} for k, sym in transitions.items()}
-
-    new_initial_state = "S"
-    new_states = [new_initial_state] + states
-
+def afn_to_epsilon_afn(states, transitions):
+    # Conversion avec ajout aléatoire de transitions epsilon
     new_transitions = {}
-    new_transitions[new_initial_state] = transitions.get(new_initial_state, {})
-    if "ε" not in new_transitions[new_initial_state]:
-            new_transitions[new_initial_state]["ε"] = []
-    # Copier les anciennes transitions
-    # for state in new_states:
-    #     new_transitions[state] = transitions.get(state, {})
-    #     if "ε" not in new_transitions[state]:
-    #         new_transitions[state]["ε"] = []
+    
+    # D'abord copier toutes les transitions existantes
+    for state in states:
+        str_state = str(state)
+        new_transitions[str_state] = transitions.get(str_state, {}).copy()
+        if "ε" not in new_transitions[str_state]:
+            new_transitions[str_state]["ε"] = []
+    
+    # Ajouter des transitions epsilon aléatoires
+    for state in states:
+        str_state = str(state)
+        # Nombre aléatoire de transitions epsilon à ajouter (0 à 3 par exemple)
+        num_epsilon = random.randint(0, 3)
+        
+        for _ in range(num_epsilon):
+            # Choisir un état destination aléatoire
+            dest_state = random.choice(states)
+            # Ajouter la transition epsilon si elle n'existe pas déjà
+            if dest_state not in new_transitions[str_state]["ε"]:
+                new_transitions[str_state]["ε"].append(dest_state)
+    
+    return new_transitions
 
-    # Ajouter epsilon transition depuis le nouvel état vers les anciens initiaux
-    new_transitions[new_initial_state]["ε"] = initial_states
-
-    return {
-        "states": new_states,
-        "initial_state": new_initial_state,
-        "transitions": new_transitions
-    }
 
 def epsilon_closure(state, transitions):
     """Retourne l’ensemble des états atteignables depuis `state` via ε-transitions"""

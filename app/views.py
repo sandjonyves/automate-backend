@@ -15,6 +15,15 @@ from .algorithme.automate_emondage import emonder_automate
 from .algorithme.epsilon_conversion import afn_to_epsilon_afn, epsilon_afn_to_afn
 from app.algorithme.epsilon_closure import epsilon_closure
 from .algorithme.afd_to_afn import afd_to_afn
+from .algorithme.epsilon_closure import epsilon_closure
+from .algorithme.epsilon_afn_to_afd import epsilon_afn_to_afd
+from .algorithme.afd_to_epsilon_afn import afd_to_epsilon_afn
+from .algorithme.thompson import thompson_regex_to_epsilon_afn
+from .algorithme.minimisation_moore import minimize_moore
+from .algorithme.glushkov import glushkov
+from .algorithme.canonisation import canonize_automate
+
+
 
 
 class AutomateViewSet(viewsets.ModelViewSet):
@@ -159,6 +168,11 @@ class AutomateEmondageView(APIView):
     
 
 
+
+
+    
+ #=================AJOUT DE STEFAN=======================
+
 class AFNToEpsilonAFNView(APIView):
     def post(self, request, pk):
         try:
@@ -252,3 +266,131 @@ class EpsilonClosureView(APIView):
             "state": state_name,
             "epsilon_closure": closure
         }, status=200)
+    
+
+
+
+
+
+class EpsilonAFNToAFDView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if automate.is_deterministic:
+            return Response({"error": "This automate is already deterministic."}, status=400)
+
+        if "ε" not in automate.alphabet:
+            return Response({"error": "This automate has no ε-transitions to eliminate."}, status=400)
+
+        result = epsilon_afn_to_afd(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            transitions=automate.transitions,
+            initial_state=automate.initial_state,
+            final_states=automate.final_states
+        )
+
+        return Response(result, status=200)
+    
+
+
+
+class AFDToEpsilonAFNView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if not automate.is_deterministic:
+            return Response({"error": "This automate is not deterministic (AFD required)."}, status=400)
+
+        result = afd_to_epsilon_afn(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            transitions=automate.transitions
+        )
+
+        return Response({
+            "states": automate.states,
+            "alphabet": automate.alphabet + ["ε"] if "ε" not in automate.alphabet else automate.alphabet,
+            "initial_state": automate.initial_state,
+            "final_states": automate.final_states,
+            "transitions": result
+        }, status=200)
+    
+
+
+
+class ThomsomRegexToEpsilonAFNView(APIView):
+    def post(self, request):
+        regex = request.data.get("regex")
+        if not regex:
+            return Response({"error": "No regex provided."}, status=400)
+        try:
+            result = thompson_regex_to_epsilon_afn(regex)
+            return Response(result, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+
+
+
+class MinimizeAFDView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        if not automate.is_deterministic:
+            return Response({"error": "This automate is not deterministic. Minimization requires an AFD."}, status=400)
+
+        result = minimize_moore(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            initial_state=automate.initial_state,
+            final_states=automate.final_states,
+            transitions=automate.transitions
+        )
+
+        return Response(result, status=200)
+    
+
+
+class RegexToGlushkovAutomateView(APIView):
+    def post(self, request):
+        regex = request.data.get("regex")
+        if not regex:
+            return Response({"error": "regex is required."}, status=400)
+        try:
+            result = glushkov(regex)
+            return Response(result, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+        
+
+
+
+
+
+class CanonizeAutomateView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automata.objects.get(pk=pk)
+        except Automata.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        result = canonize_automate(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            initial_state=automate.initial_state,
+            final_states=automate.final_states,
+            transitions=automate.transitions,
+            is_deterministic=automate.is_deterministic
+        )
+
+        return Response(result, status=200)
