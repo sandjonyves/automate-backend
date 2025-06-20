@@ -14,6 +14,7 @@ from .algorithme.automate_analysis import identify_states
 from .algorithme.automate_emondage import emonder_automate
 from .algorithme.epsilon_conversion import afn_to_epsilon_afn, epsilon_afn_to_afn
 from app.algorithme.epsilon_closure import epsilon_closure
+from .algorithme.afd_to_afn import afd_to_afn
 
 
 class AutomateViewSet(viewsets.ModelViewSet):
@@ -169,6 +170,7 @@ class AFNToEpsilonAFNView(APIView):
             return Response({"error": "Must be an AFN to convert to epsilon-AFN."}, status=400)
 
         result = afn_to_epsilon_afn(
+            initial_states=automate.initial_state,
             states=automate.states,
             transitions=automate.transitions
         )
@@ -180,6 +182,27 @@ class AFNToEpsilonAFNView(APIView):
             "final_states": automate.final_states,
             "transitions": result
         }, status=200)
+
+
+class AFDToRealAFNView(APIView):
+    def post(self, request, pk):
+        try:
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
+
+        # if not automate.is_deterministic:
+        #     return Response({"error": "Automate must be deterministic (AFD)."}, status=400)
+
+        result = afd_to_afn(
+            states=automate.states,
+            alphabet=automate.alphabet,
+            transitions=automate.transitions,
+            initial_state=automate.initial_state,
+            final_states=automate.final_states
+        )
+
+        return Response(result, status=200)
 
 
 class EpsilonAFNToAFNView(APIView):

@@ -1,15 +1,40 @@
 from collections import defaultdict
 
-def afn_to_epsilon_afn(states, transitions):
-    # Conversion simple : ajoute epsilon-transitions vides
-    new_transitions = {}
-    for state in states:
-        str_state = str(state)
-        new_transitions[str_state] = transitions.get(str_state, {})
-        if "ε" not in new_transitions[str_state]:
-            new_transitions[str_state]["ε"] = []
-    return new_transitions
+def afn_to_epsilon_afn(states, initial_states, transitions):
+    """
+    Convertit un AFN en AFN-ε en ajoutant un nouvel état avec une transition ε vers les anciens états initiaux.
+    
+    :param states: Liste des états (ex. ["q0", "q1"])
+    :param initial_states: Liste des anciens états initiaux (ex. ["q0"])
+    :param transitions: Dictionnaire des transitions (ex. {"q0": {"a": ["q1"]}})
+    :return: Dictionnaire contenant les nouveaux états, transitions, et nouvel état initial
+    """
 
+    states = [str(s) for s in states]
+    initial_states = [str(s) for s in initial_states]
+    transitions = {str(k): {a: list(map(str, v)) for a, v in sym.items()} for k, sym in transitions.items()}
+
+    new_initial_state = "S"
+    new_states = [new_initial_state] + states
+
+    new_transitions = {}
+    new_transitions[new_initial_state] = transitions.get(new_initial_state, {})
+    if "ε" not in new_transitions[new_initial_state]:
+            new_transitions[new_initial_state]["ε"] = []
+    # Copier les anciennes transitions
+    # for state in new_states:
+    #     new_transitions[state] = transitions.get(state, {})
+    #     if "ε" not in new_transitions[state]:
+    #         new_transitions[state]["ε"] = []
+
+    # Ajouter epsilon transition depuis le nouvel état vers les anciens initiaux
+    new_transitions[new_initial_state]["ε"] = initial_states
+
+    return {
+        "states": new_states,
+        "initial_state": new_initial_state,
+        "transitions": new_transitions
+    }
 
 def epsilon_closure(state, transitions):
     """Retourne l’ensemble des états atteignables depuis `state` via ε-transitions"""
