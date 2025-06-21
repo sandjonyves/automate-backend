@@ -60,8 +60,15 @@ def minimize_moore(states, alphabet, initial_state, final_states, transitions):
         for symbol in alphabet:
             dest = transitions.get(rep, {}).get(symbol)
             if dest is not None:
-                new_transitions[new_src][symbol] = state_map[str(dest)]
-
+                if isinstance(dest, list):
+                    # Plusieurs cibles -> groupe d'états -> clé canonique
+                    dest_key = tuple(sorted(state_map[d] for d in dest))
+                    # Comme on veut un automate déterministe minimal, la cible est un seul état (groupe),
+                    # donc on peut prendre n'importe quel dans dest_key (ils sont égaux en minimisation)
+                    # Ici on prend le premier
+                    new_transitions[new_src][symbol] = dest_key[0]
+                else:
+                    new_transitions[new_src][symbol] = state_map[str(dest)]
     return {
         "states": new_states,
         "alphabet": alphabet,

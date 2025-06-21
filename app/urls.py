@@ -1,4 +1,4 @@
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import DefaultRouter,SimpleRouter
 from .views import AutomateViewSet
 from django.urls import path, include
 from .views import RegexFromEquationsAPIView
@@ -12,13 +12,16 @@ from .views import AFNToEpsilonAFNView, EpsilonAFNToAFNView
 from .views import EpsilonClosureView
 from .views import EpsilonAFNToAFDView
 from .views import AFDToEpsilonAFNView
-from .views import ThomsomRegexToEpsilonAFNView
 from .views import MinimizeAFDView
-from .views import RegexToGlushkovAutomateView
+
 from .views import CanonizeAutomateView
 
 
-router = DefaultRouter()
+from .views import RegexToEpsilonAFNView
+
+from .views import AutomatonGlushkov
+
+router = SimpleRouter()
 router.register(r'automates', AutomateViewSet)
 
 urlpatterns = [
@@ -36,11 +39,12 @@ urlpatterns = [
   path("automates/<int:pk>/epsilon-closure/<str:state_name>/", EpsilonClosureView.as_view(), name="epsilon-closure"),
   path("automates/<int:pk>/from-epsilon-afn-to-afd/", EpsilonAFNToAFDView.as_view(), name="epsilon-afn-to-afd"),
   path("automates/<int:pk>/to-epsilon-afn-from-afd/", AFDToEpsilonAFNView.as_view(), name="afd-to-epsilon-afn"),
-  path("automates/<int:pk>/from-regex/", ThomsomRegexToEpsilonAFNView.as_view(), name="regex-to-epsilon-afn"),
   path("automates/<int:pk>/minimize/", MinimizeAFDView.as_view(), name="minimize-afd"),
-  path("automates/<int:pk>/from-regex-glushkov/", RegexToGlushkovAutomateView.as_view(), name="regex-to-glushkov"), 
-  path("automates/<int:pk>/canonize/", CanonizeAutomateView.as_view(), name="canonize-automate"),
+  path("automates/<int:pk>/canonize/", CanonizeAutomateView.as_view(), name="canonize-automate"), 
 
+  path('from-regex/', RegexToEpsilonAFNView.as_view(), name="regex-to-epsilon-afn"), #thomsom
+
+  path('build-automaton/', AutomatonGlushkov.as_view()),
 
 ]
 
