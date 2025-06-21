@@ -43,3 +43,17 @@ class AutomateSerializer(serializers.ModelSerializer):
 class EquationSystemSerializer(serializers.Serializer):
     equations = serializers.DictField(child=serializers.CharField())
     variable_initiale = serializers.CharField()
+
+
+
+class RegexInputSerializer(serializers.Serializer):
+    regex = serializers.CharField(max_length=100)
+
+
+
+class AutomateSerializer(serializers.Serializer):
+    states = serializers.ListField(child=serializers.CharField())
+    alphabet = serializers.ListField(child=serializers.CharField())
+    transitions = serializers.DictField(child=serializers.ListField(child=serializers.CharField()))
+    initial_state = serializers.CharField()
+    final_states = serializers.ListField(child=serializers.CharField())
