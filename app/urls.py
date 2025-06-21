@@ -27,6 +27,7 @@ from .views import UnionAutomateView
 
 from .views import IntersectAutomateView
 from .views import ComplementAutomateView
+from .views import ConcatenateAutomateView
 
 
 router = DefaultRouter()
@@ -58,6 +59,7 @@ urlpatterns = [
   path('union/', UnionAutomateView.as_view(), name='automate-union'),
   path('intersection/', IntersectAutomateView.as_view(), name='automate-intersection'),
   path('complement/', ComplementAutomateView.as_view(), name='automate-complement'),
+  path('concatenate/', ConcatenateAutomateView.as_view(), name='automate-concatenate'),
 
 
 

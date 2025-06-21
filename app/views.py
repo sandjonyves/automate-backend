@@ -28,9 +28,7 @@ from .algorithme.intersection import Automate as IntersectAutomate, intersect_au
 
 from .algorithme.complement import Automate as  complement_automate
 
-# from .algorithme.concatenation import concatenate_automata, Automate
-
-
+from .algorithme.concatenation import Automate as ConcatenateAutomate, concatenate_automates
 
 
 
@@ -727,3 +725,82 @@ class ComplementAutomateView(APIView):
         
 
 
+class ConcatenateAutomateView(APIView):
+    def post(self, request):
+        try:
+            print("Starting ConcatenateAutomateView processing")
+            automate_id1 = request.data.get("automate_id1")
+            automate_id2 = request.data.get("automate_id2")
+            print(f"Received automate_id1: {automate_id1}, automate_id2: {automate_id2}")
+            
+            if not automate_id1 or not automate_id2:
+                return Response({"error": "Both automate_id1 and automate_id2 are required"}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+
+            automate1_instance = Automate.objects.get(pk=automate_id1)
+            automate2_instance = Automate.objects.get(pk=automate_id2)
+            print(f"Fetched automate1 instance: {automate1_instance.__dict__}")
+            print(f"Fetched automate2 instance: {automate2_instance.__dict__}")
+            
+            # Convertir les transitions en tuples, gérer les cas où les clés sont des dictionnaires imbriqués
+            def parse_transitions(transitions_dict):
+                transitions = {}
+                print(f"Parsing transitions: {transitions_dict}")
+                for state, sub_transitions in transitions_dict.items():
+                    print(f"Processing state: {state}")
+                    if isinstance(sub_transitions, dict):
+                        for symbol, target in sub_transitions.items():
+                            transitions[(state, symbol)] = {target} if isinstance(target, str) else set(target)
+                    else:
+                        print(f"Warning: Invalid sub-transitions format for state {state}")
+                print(f"Parsed transitions: {transitions}")
+                return transitions
+
+            automate1_transitions = parse_transitions(automate1_instance.transitions)
+            automate2_transitions = parse_transitions(automate2_instance.transitions)
+            print(f"Automate1 transitions: {automate1_transitions}")
+            print(f"Automate2 transitions: {automate2_transitions}")
+
+            automate1 = ConcatenateAutomate(
+                states=set(automate1_instance.states),
+                alphabet=set(automate1_instance.alphabet),
+                transitions=automate1_transitions,
+                initial_state=automate1_instance.initial_state,
+                final_states=set(automate1_instance.final_states)
+            )
+            automate2 = ConcatenateAutomate(
+                states=set(automate2_instance.states),
+                alphabet=set(automate2_instance.alphabet),
+                transitions=automate2_transitions,
+                initial_state=automate2_instance.initial_state,
+                final_states=set(automate2_instance.final_states)
+            )
+            print(f"Automate1 object created: {automate1.__dict__}")
+            print(f"Automate2 object created: {automate2.__dict__}")
+            
+            concatenated_automate = concatenate_automates(automate1, automate2)
+            print(f"Concatenated automate created: {concatenated_automate.__dict__}")
+
+            # Convertir les tuples des transitions en chaînes pour la sérialisation JSON
+            transitions_serialized = {
+                f"{state}_{symbol}": list(targets)
+                for (state, symbol), targets in concatenated_automate.transitions.items()
+            }
+            
+            response_data = {
+                'states': list(concatenated_automate.states),
+                'alphabet': list(concatenated_automate.alphabet),
+                'transitions': transitions_serialized,
+                'initial_state': concatenated_automate.initial_state,
+                'final_states': list(concatenated_automate.final_states)
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except ObjectDoesNotExist:
+            return Response({"error": "One or both automates not found"}, 
+                          status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
