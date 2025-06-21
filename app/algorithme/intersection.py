@@ -1,4 +1,5 @@
 from typing import Set, Dict, Tuple
+from collections import defaultdict
 
 class Automate:
     def __init__(self, states: Set[str], alphabet: Set[str], transitions: Dict[Tuple[str, str], Set[str]], 
@@ -9,37 +10,52 @@ class Automate:
         self.initial_state = initial_state
         self.final_states = final_states
 
-def intersect_automates(automate1: Automate, automate2: Automate) -> Automate:
-    """Calcule l'intersection de deux automates en utilisant le produit cartésien."""
-    if not automate1.alphabet.issubset(automate2.alphabet) or not automate2.alphabet.issubset(automate1.alphabet):
-        raise ValueError("Alphabets must be compatible for intersection")
 
+def intersect_automates(automate1: Automate, automate2: Automate) -> Automate:
+    """Calcule l'intersection de deux automates (NFA ou DFA) par produit cartésien, avec transitions multiples."""
+    
+    # Vérifier que les alphabets sont identiques
+    if automate1.alphabet != automate2.alphabet:
+        raise ValueError("Alphabets must be identical for intersection")
+
+    new_alphabet = automate1.alphabet
+
+    # Nouvel état initial : couple des états initiaux
     new_initial_state = f"{automate1.initial_state}_{automate2.initial_state}"
-    new_states = {f"{s1}_{s2}" for s1 in automate1.states for s2 in automate2.states}
-    new_transitions = {}
+
+    # Construire tous les états possibles : produit cartésien des états
+    new_states = set()
+    for s1 in automate1.states:
+        for s2 in automate2.states:
+            new_states.add(f"{s1}_{s2}")
+
+    new_transitions = defaultdict(set)  # (state, symbol) -> set(next_states)
+
+    # Parcourir tous les nouveaux états et symboles pour créer les transitions
     for s1 in automate1.states:
         for s2 in automate2.states:
             current_state = f"{s1}_{s2}"
-            for symbol in automate1.alphabet:
-                next_s1_set = automate1.transitions.get((s1, symbol), set())
-                next_s2_set = automate2.transitions.get((s2, symbol), set())
-                if next_s1_set and next_s2_set:
-                    next_s1 = next(iter(next_s1_set))
-                    next_s2 = next(iter(next_s2_set))
-                    if next_s1 and next_s2:  # Vérification supplémentaire
-                        next_state = f"{next_s1}_{next_s2}"
-                        new_transitions[(current_state, symbol)] = {next_state}
-                        print(f"Processing: state={current_state}, symbol={symbol}, next_state={next_state}")
-                    else:
-                        print(f"Warning: Invalid next state for {current_state} with symbol {symbol}")
+            for symbol in new_alphabet:
+                # Obtenir l'ensemble des états cibles pour chaque automate
+                next_s1_states = automate1.transitions.get((s1, symbol), set())
+                next_s2_states = automate2.transitions.get((s2, symbol), set())
 
-    new_final_states = {f"{s1}_{s2}" for s1 in automate1.final_states for s2 in automate2.final_states}
-    print(f"New final states: {new_final_states}")
+                # Faire le produit cartésien des états suivants
+                for ns1 in next_s1_states:
+                    for ns2 in next_s2_states:
+                        next_state = f"{ns1}_{ns2}"
+                        new_transitions[(current_state, symbol)].add(next_state)
+
+    # États finaux : ceux où chaque composante est finale dans son automate respectif
+    new_final_states = set()
+    for f1 in automate1.final_states:
+        for f2 in automate2.final_states:
+            new_final_states.add(f"{f1}_{f2}")
 
     return Automate(
         states=new_states,
-        alphabet=automate1.alphabet,
-        transitions=new_transitions,
+        alphabet=new_alphabet,
+        transitions=dict(new_transitions),
         initial_state=new_initial_state,
         final_states=new_final_states
     )

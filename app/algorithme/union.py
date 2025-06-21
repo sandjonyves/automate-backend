@@ -1,49 +1,60 @@
-from typing import Set, Dict, Tuple
+from typing import Set, Dict, List
 
 class Automate:
-    def __init__(self, states: Set[str], alphabet: Set[str], transitions: Dict[str, Dict[str, str]], 
+    def __init__(self, states: Set[str], alphabet: Set[str], transitions: Dict[str, Dict[str, List[str]]], 
                  initial_state: str, final_states: Set[str]):
         self.states = states
         self.alphabet = alphabet
-        self.transitions = transitions  # Clés : états, valeurs : {symbole: état suivant}
+        self.transitions = transitions  # Clés : états, valeurs : {symbole: [états suivants]}
         self.initial_state = initial_state
         self.final_states = final_states
 
 def union_automates(automate1: Automate, automate2: Automate) -> Automate:
-    """Calcule l'union de deux automates en créant un nouvel automate."""
-    # Vérifier que les alphabets sont compatibles
+    """Calcule l'union de deux automates."""
     combined_alphabet = automate1.alphabet.union(automate2.alphabet)
-    
-    # Créer un nouvel état initial
     new_initial_state = "q_start"
-    
-    # Combiner les états (ajouter un préfixe pour éviter les collisions)
+
+    # Renommage des états pour éviter les conflits
     states1 = {f"a1_{state}" for state in automate1.states}
     states2 = {f"a2_{state}" for state in automate2.states}
     new_states = states1.union(states2).union({new_initial_state})
-    
-    # Combiner les transitions
-    new_transitions = {}
-    # Transitions depuis le nouvel état initial
-    new_transitions[f"q_start_"] = {f"a1_{automate1.initial_state}", f"a2_{automate2.initial_state}"}
-    
-    # Ajouter les transitions des deux automates avec préfixe
+
+    # Initialisation des nouvelles transitions
+    new_transitions: Dict[str, Dict[str, List[str]]] = {}
+
+    # Ajout des transitions renommées de automate1
     for state, trans_dict in automate1.transitions.items():
-        for symbol, next_state in trans_dict.items():
-            new_transitions[f"a1_{state}_{symbol}"] = {f"a1_{next_state}"}
-            print(f"Processing automate1: state={state}, symbol={symbol}, next_state={next_state}")
-    
+        renamed_state = f"a1_{state}"
+        new_transitions[renamed_state] = {}
+        for symbol, destinations in trans_dict.items():
+            if not isinstance(destinations, list):
+                destinations = [destinations]
+            new_transitions[renamed_state][symbol] = [f"a1_{dst}" for dst in destinations]
+
+    # Ajout des transitions renommées de automate2
     for state, trans_dict in automate2.transitions.items():
-        for symbol, next_state in trans_dict.items():
-            new_transitions[f"a2_{state}_{symbol}"] = {f"a2_{next_state}"}
-            print(f"Processing automate2: state={state}, symbol={symbol}, next_state={next_state}")
-    
-    # Combiner les états finaux
-    new_final_states = {f"a1_{state}" for state in automate1.final_states}.union(
-        {f"a2_{state}" for state in automate2.final_states}
-    )
-    print(f"New final states: {new_final_states}")
-    
+        renamed_state = f"a2_{state}"
+        new_transitions[renamed_state] = {}
+        for symbol, destinations in trans_dict.items():
+            if not isinstance(destinations, list):
+                destinations = [destinations]
+            new_transitions[renamed_state][symbol] = [f"a2_{dst}" for dst in destinations]
+
+    # Ajout des transitions depuis le nouvel état initial
+    new_transitions[new_initial_state] = {}
+    # On ajoute une transition ε vers les deux automates
+    new_transitions[new_initial_state][""] = [
+        f"a1_{automate1.initial_state}",
+        f"a2_{automate2.initial_state}"
+    ]
+
+    # Détermination des nouveaux états finaux
+    new_final_states = {
+        f"a1_{state}" for state in automate1.final_states
+    }.union({
+        f"a2_{state}" for state in automate2.final_states
+    })
+
     return Automate(
         states=new_states,
         alphabet=combined_alphabet,

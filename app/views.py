@@ -28,7 +28,7 @@ from .algorithme.intersection import Automate as IntersectAutomate, intersect_au
 
 from .algorithme.complement import Automate as  complement_automate
 
-from .algorithme.concatenation import concatenate_automata, Automate
+# from .algorithme.concatenation import concatenate_automata, Automate
 
 
 
@@ -562,8 +562,8 @@ class UnionAutomateView(APIView):
         except ObjectDoesNotExist:
             return Response({"error": "One or both automates not found"}, 
                           status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        # except Exception as e:
+        #     return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 
 
@@ -571,6 +571,8 @@ class UnionAutomateView(APIView):
 
 
 
+
+from collections import defaultdict
 
 class IntersectAutomateView(APIView):
     def post(self, request):
@@ -580,32 +582,27 @@ class IntersectAutomateView(APIView):
             
             if not automate_id1 or not automate_id2:
                 return Response({"error": "Both automate_id1 and automate_id2 are required"}, 
-                              status=status.HTTP_400_BAD_REQUEST)
+                                status=status.HTTP_400_BAD_REQUEST)
 
             automate1_instance = Automate.objects.get(pk=automate_id1)
             automate2_instance = Automate.objects.get(pk=automate_id2)
             
-            # Convertir les transitions en tuples, gérer les cas où les clés ne sont pas des tuples
             def parse_transitions(transitions_dict):
                 transitions = {}
-                for key, value in transitions_dict.items():
-                    if isinstance(key, str):
-                        # Supposer que la clé est au format "etat_symbole" (ex: "q0_a")
-                        if "_" in key:
-                            state, symbol = key.split("_")
-                            transitions[(state, symbol)] = set(value) if isinstance(value, list) else {value}
-                        else:
-                            print(f"Warning: Invalid transition key format: {key}")
-                    elif isinstance(key, tuple) and len(key) == 2:
-                        transitions[key] = set(value) if isinstance(value, list) else {value}
+                for state, trans_map in transitions_dict.items():
+                    if isinstance(trans_map, dict):
+                        for symbol, dest_list in trans_map.items():
+                            key = (state, symbol)
+                            if isinstance(dest_list, list):
+                                transitions[key] = set(dest_list)
+                            else:
+                                transitions[key] = {dest_list}
                     else:
-                        print(f"Warning: Skipping invalid key: {key}")
+                        print(f"Warning: transitions for state {state} is not a dict")
                 return transitions
-
+            
             automate1_transitions = parse_transitions(automate1_instance.transitions)
             automate2_transitions = parse_transitions(automate2_instance.transitions)
-            print(f"Automate1 transitions: {automate1_transitions}")
-            print(f"Automate2 transitions: {automate2_transitions}")
 
             automate1 = IntersectAutomate(
                 states=set(automate1_instance.states),
@@ -623,11 +620,17 @@ class IntersectAutomateView(APIView):
             )
             
             intersect_automate = intersect_automates(automate1, automate2)
+
+            def transitions_to_nested_dict(transitions):
+                result = defaultdict(lambda: defaultdict(list))
+                for (state, symbol), next_states in transitions.items():
+                    result[state][symbol].extend(next_states)
+                return {state: dict(symbols) for state, symbols in result.items()}
             
             response_data = {
                 'states': list(intersect_automate.states),
                 'alphabet': list(intersect_automate.alphabet),
-                'transitions': {k: list(v) for k, v in intersect_automate.transitions.items()},
+                'transitions': transitions_to_nested_dict(intersect_automate.transitions),
                 'initial_state': intersect_automate.initial_state,
                 'final_states': list(intersect_automate.final_states)
             }
@@ -636,12 +639,11 @@ class IntersectAutomateView(APIView):
             
         except ObjectDoesNotExist:
             return Response({"error": "One or both automates not found"}, 
-                          status=status.HTTP_404_NOT_FOUND)
+                            status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)      
 
 def complement_automate(automate: Automate) -> Automate:
     """Calcule le complémentaire d'un automate en inversant les états finaux/non finaux."""
