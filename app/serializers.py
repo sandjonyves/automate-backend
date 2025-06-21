@@ -51,6 +51,7 @@ class RegexInputSerializer(serializers.Serializer):
 
 
 
+
 # class AutomateSerializer(serializers.Serializer):
 #     states = serializers.ListField(child=serializers.CharField())
 #     alphabet = serializers.ListField(child=serializers.CharField())
