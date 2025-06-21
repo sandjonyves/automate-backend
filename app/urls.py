@@ -22,6 +22,13 @@ from .views import RegexToEpsilonAFNView
 
 from .views import AutomatonGlushkov
 
+
+from .views import UnionAutomateView
+
+from .views import IntersectAutomateView
+from .views import ComplementAutomateView
+
+
 router = SimpleRouter()
 router.register(r'automates', AutomateViewSet)
 
@@ -34,6 +41,7 @@ urlpatterns = [
      path("automates/<int:pk>/to-afn/", AFDToRealAFNView.as_view(), name="afd-to-afn"),
  path("automates/<int:pk>/states-analysis/", AutomateStateAnalysisView.as_view(), name="automate-state-analysis"),
  path("automates/<int:pk>/emondage/", AutomateEmondageView.as_view(), name="automate-emondage"),
+ 
 
  #=================AJOUT DE STEFAN=======================
  path("automates/<int:pk>/to-epsilon-afn/", AFNToEpsilonAFNView.as_view(), name="afn-to-epsilon-afn"),
@@ -47,6 +55,11 @@ urlpatterns = [
   path('from-regex/', RegexToEpsilonAFNView.as_view(), name="regex-to-epsilon-afn"), #thomsom
 
   path('build-automaton/', AutomatonGlushkov.as_view()),
+  path('union/', UnionAutomateView.as_view(), name='automate-union'),
+  path('intersection/', IntersectAutomateView.as_view(), name='automate-intersection'),
+  path('complement/', ComplementAutomateView.as_view(), name='automate-complement'),
+
+
 
 ]
 

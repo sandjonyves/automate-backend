@@ -14,7 +14,7 @@ from .algorithme.afd_to_afdc import afd_to_afdc
 from .algorithme.automate_analysis import identify_states
 from .algorithme.automate_emondage import emonder_automate
 from .algorithme.epsilon_conversion import afn_to_epsilon_afn, epsilon_afn_to_afn
-from app.algorithme.epsilon_closure import epsilon_closure
+from .algorithme.epsilon_closure import epsilon_closure
 from .algorithme.afd_to_afn import afd_to_afn
 from .algorithme.epsilon_closure import epsilon_closure
 from .algorithme.epsilon_afn_to_afd import epsilon_afn_to_afd
@@ -22,6 +22,13 @@ from .algorithme.afd_to_epsilon_afn import afd_to_epsilon_afn
 from .algorithme.thompson import thompson_regex_to_epsilon_afn
 from .algorithme.glushkov import Glushkov
 from .algorithme.minimisation_moore import minimize_moore
+
+from .algorithme.union import Automate as UnionAutomate, union_automates
+from .algorithme.intersection import Automate as IntersectAutomate, intersect_automates
+
+from .algorithme.complement import Automate as  complement_automate
+
+from .algorithme.concatenation import concatenate_automata, Automate
 
 
 
@@ -465,3 +472,220 @@ class CanonizeAutomateView(APIView):
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+class UnionAutomateView(APIView):
+    def post(self, request):
+        try:
+            # Récupérer les IDs des automates depuis la requête
+            automate_id1 = request.data.get("automate_id1")
+            automate_id2 = request.data.get("automate_id2")
+            print(request.data)
+            # if not automate_id1 or not automate_id2:
+            #     return Response({"error": "Both automate_id1 and automate_id2 are required"}, 
+            #                   status=status.HTTP_400_BAD_REQUEST)
+
+            # Récupérer les automates depuis la base de données
+            automate1_instance = Automate.objects.get(pk=automate_id1)
+            automate2_instance = Automate.objects.get(pk=automate_id2)
+            
+            # Convertir en objets Automate pour le traitement
+            automate1 = UnionAutomate(
+                states=set(automate1_instance.states),
+                alphabet=set(automate1_instance.alphabet),
+                transitions=automate1_instance.transitions,
+                initial_state=automate1_instance.initial_state,
+                final_states=set(automate1_instance.final_states)
+            )
+            automate2 = UnionAutomate(
+                states=set(automate2_instance.states),
+                alphabet=set(automate2_instance.alphabet),
+                transitions=automate2_instance.transitions,
+                initial_state=automate2_instance.initial_state,
+                final_states=set(automate2_instance.final_states)
+            )
+            
+            print(automate1.transitions,automate2.transitions)
+            # Calculer l'union
+            union_automate = union_automates(automate1, automate2)
+            
+            # Préparer la réponse
+            response_data = {
+                'states': list(union_automate.states),
+                'alphabet': list(union_automate.alphabet),
+                'transitions': union_automate.transitions,
+                'initial_state': union_automate.initial_state,
+                'final_states': list(union_automate.final_states)
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except ObjectDoesNotExist:
+            return Response({"error": "One or both automates not found"}, 
+                          status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+
+
+
+
+
+class IntersectAutomateView(APIView):
+    def post(self, request):
+        try:
+            automate_id1 = request.data.get("automate_id1")
+            automate_id2 = request.data.get("automate_id2")
+            
+            if not automate_id1 or not automate_id2:
+                return Response({"error": "Both automate_id1 and automate_id2 are required"}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+
+            automate1_instance = Automate.objects.get(pk=automate_id1)
+            automate2_instance = Automate.objects.get(pk=automate_id2)
+            
+            # Convertir les transitions en tuples, gérer les cas où les clés ne sont pas des tuples
+            def parse_transitions(transitions_dict):
+                transitions = {}
+                for key, value in transitions_dict.items():
+                    if isinstance(key, str):
+                        # Supposer que la clé est au format "etat_symbole" (ex: "q0_a")
+                        if "_" in key:
+                            state, symbol = key.split("_")
+                            transitions[(state, symbol)] = set(value) if isinstance(value, list) else {value}
+                        else:
+                            print(f"Warning: Invalid transition key format: {key}")
+                    elif isinstance(key, tuple) and len(key) == 2:
+                        transitions[key] = set(value) if isinstance(value, list) else {value}
+                    else:
+                        print(f"Warning: Skipping invalid key: {key}")
+                return transitions
+
+            automate1_transitions = parse_transitions(automate1_instance.transitions)
+            automate2_transitions = parse_transitions(automate2_instance.transitions)
+            print(f"Automate1 transitions: {automate1_transitions}")
+            print(f"Automate2 transitions: {automate2_transitions}")
+
+            automate1 = IntersectAutomate(
+                states=set(automate1_instance.states),
+                alphabet=set(automate1_instance.alphabet),
+                transitions=automate1_transitions,
+                initial_state=automate1_instance.initial_state,
+                final_states=set(automate1_instance.final_states)
+            )
+            automate2 = IntersectAutomate(
+                states=set(automate2_instance.states),
+                alphabet=set(automate2_instance.alphabet),
+                transitions=automate2_transitions,
+                initial_state=automate2_instance.initial_state,
+                final_states=set(automate2_instance.final_states)
+            )
+            
+            intersect_automate = intersect_automates(automate1, automate2)
+            
+            response_data = {
+                'states': list(intersect_automate.states),
+                'alphabet': list(intersect_automate.alphabet),
+                'transitions': {k: list(v) for k, v in intersect_automate.transitions.items()},
+                'initial_state': intersect_automate.initial_state,
+                'final_states': list(intersect_automate.final_states)
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except ObjectDoesNotExist:
+            return Response({"error": "One or both automates not found"}, 
+                          status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+def complement_automate(automate: Automate) -> Automate:
+    """Calcule le complémentaire d'un automate en inversant les états finaux/non finaux."""
+    new_final_states = automate.states - automate.final_states
+    print(f"New final states (old non-final states): {new_final_states}")
+
+    return Automate(
+        states=automate.states,
+        alphabet=automate.alphabet,
+        transitions=automate.transitions,
+        initial_state=automate.initial_state,
+        final_states=new_final_states
+    )
+
+class ComplementAutomateView(APIView):
+    def post(self, request):
+        try:
+            print("Starting ComplementAutomateView processing")
+            automate_id = request.data.get("automate_id")
+            print(f"Received automate_id: {automate_id}")
+            
+            if not automate_id:
+                return Response({"error": "automate_id is required"}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+
+            automate_instance = Automate.objects.get(pk=automate_id)
+            print(f"Fetched automate instance: {automate_instance.__dict__}")
+            
+            def parse_transitions(transitions_dict):
+                transitions = {}
+                print(f"Parsing transitions: {transitions_dict}")
+                for key, value in transitions_dict.items():
+                    print(f"Processing key: {key}, value: {value}")
+                    if isinstance(key, str):
+                        if "_" in key:
+                            state, symbol = key.split("_")
+                            transitions[(state, symbol)] = set(value) if isinstance(value, list) else {value}
+                        else:
+                            print(f"Warning: Invalid transition key format: {key}")
+                    elif isinstance(key, tuple) and len(key) == 2:
+                        transitions[key] = set(value) if isinstance(value, list) else {value}
+                    else:
+                        print(f"Warning: Skipping invalid key: {key}")
+                print(f"Parsed transitions: {transitions}")
+                return transitions
+
+            automate_transitions = parse_transitions(automate_instance.transitions)
+            print(f"Automate transitions after parsing: {automate_transitions}")
+
+            # Création de l'objet Automate (pas ComplementAutomate)
+            automate = Automate(
+                states=set(automate_instance.states),
+                alphabet=set(automate_instance.alphabet),
+                transitions=automate_transitions,
+                initial_state=automate_instance.initial_state,
+                final_states=set(automate_instance.final_states)
+            )
+            print(f"Automate object created: {automate.__dict__}")
+            
+            # Appel de la fonction complement_automate (pas de classe)
+            complemented = complement_automate(automate)
+            print(f"Complemented automate created: {complemented.final_states}")
+
+            response_data = {
+                'states': list(complemented.states),
+                'alphabet': list(complemented.alphabet),
+                'transitions': {str(k): list(v) for k, v in complemented.transitions.items()},
+                'initial_state': complemented.initial_state,
+                'final_states': list(complemented.final_states)
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except ObjectDoesNotExist:
+            return Response({"error": "Automate not found"}, 
+                          status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+

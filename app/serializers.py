@@ -51,9 +51,3 @@ class RegexInputSerializer(serializers.Serializer):
 
 
 
-class AutomateSerializer(serializers.Serializer):
-    states = serializers.ListField(child=serializers.CharField())
-    alphabet = serializers.ListField(child=serializers.CharField())
-    transitions = serializers.DictField(child=serializers.ListField(child=serializers.CharField()))
-    initial_state = serializers.CharField()
-    final_states = serializers.ListField(child=serializers.CharField())
