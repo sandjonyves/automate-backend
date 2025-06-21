@@ -4,7 +4,7 @@ from .models import Automate
 class AutomateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Automate
-        fields = '__all__'
+        fields = ['id', 'states', 'initial_state', 'final_states', 'alphabet', 'transitions']
 
     def validate(self, data):
         states = data['states']
@@ -51,9 +51,9 @@ class RegexInputSerializer(serializers.Serializer):
 
 
 
-class AutomateSerializer(serializers.Serializer):
-    states = serializers.ListField(child=serializers.CharField())
-    alphabet = serializers.ListField(child=serializers.CharField())
-    transitions = serializers.DictField(child=serializers.ListField(child=serializers.CharField()))
-    initial_state = serializers.CharField()
-    final_states = serializers.ListField(child=serializers.CharField())
+# class AutomateSerializer(serializers.Serializer):
+#     states = serializers.ListField(child=serializers.CharField())
+#     alphabet = serializers.ListField(child=serializers.CharField())
+#     transitions = serializers.DictField(child=serializers.ListField(child=serializers.CharField()))
+#     initial_state = serializers.CharField()
+#     final_states = serializers.ListField(child=serializers.CharField())

@@ -414,6 +414,31 @@ from queue import Queue
 # Assure-toi d'importer ton modèle Automate ici
 from .models import Automate
 
+def parse_automate_json(data: dict) -> CanonicalAutomate:
+    states = set(data["states"])
+    alphabet = set(data["alphabet"])
+    initial_state = data["initial_state"]
+    final_states = set(data["final_states"])
+    
+    transitions = {}
+    raw_transitions = data["transitions"]
+    
+    for state, trans in raw_transitions.items():
+        for symbol, dest in trans.items():
+            if isinstance(dest, list):
+                transitions[(state, symbol)] = set(dest)
+            else:
+                transitions[(state, symbol)] = {dest}
+
+    return CanonicalAutomate(
+        states=states,
+        alphabet=alphabet,
+        transitions=transitions,
+        initial_state=initial_state,
+        final_states=final_states
+    )
+
+
 class CanonicalAutomate:
     def __init__(self, states: Set[str], alphabet: Set[str], transitions: Dict[Tuple[str, str], Set[str]], 
                  initial_state: str, final_states: Set[str]):
@@ -423,7 +448,17 @@ class CanonicalAutomate:
         self.initial_state = initial_state
         self.final_states = final_states
 
-# (Les fonctions determinize, complete, minimize et canonize restent inchangées...)
+# Utilitaire pour parser les transitions au bon format
+def parse_transitions(raw_transitions: dict) -> Dict[Tuple[str, str], Set[str]]:
+    parsed = {}
+    for from_state, transitions_for_state in raw_transitions.items():
+        for symbol, dest in transitions_for_state.items():
+            if isinstance(dest, list):
+                parsed[(from_state, symbol)] = set(dest)
+            else:
+                parsed[(from_state, symbol)] = {dest}
+    return parsed
+
 
 class CanonizeAutomateView(APIView):
     def get(self, request, pk):
@@ -431,11 +466,11 @@ class CanonizeAutomateView(APIView):
             # Récupération de l'automate depuis la base de données
             automate_instance = Automate.objects.get(pk=pk)
 
-            # Création de l'automate canonique
+            # Création de l'automate canonique (via JSONField, pas besoin de eval !)
             automate = CanonicalAutomate(
                 states=set(automate_instance.states),
                 alphabet=set(automate_instance.alphabet),
-                transitions={eval(k): set(v) for k, v in automate_instance.transitions.items()},
+                transitions=parse_transitions(automate_instance.transitions),
                 initial_state=automate_instance.initial_state,
                 final_states=set(automate_instance.final_states)
             )
@@ -444,10 +479,11 @@ class CanonizeAutomateView(APIView):
             canonized_automate = canonize(automate)
 
             # Sérialisation des transitions pour les rendre compatibles JSON
-            transitions_serialized = {
-                f"{from_state},{symbol}": list(to_states)
-                for (from_state, symbol), to_states in canonized_automate.transitions.items()
-            }
+            transitions_serialized = {}
+            for (from_state, symbol), to_states in canonized_automate.transitions.items():
+                if from_state not in transitions_serialized:
+                    transitions_serialized[from_state] = {}
+                transitions_serialized[from_state][symbol] = list(to_states)
 
             # Réponse à envoyer
             response_data = {

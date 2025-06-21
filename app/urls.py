@@ -22,7 +22,7 @@ from .views import RegexToEpsilonAFNView
 
 from .views import AutomatonGlushkov
 
-router = SimpleRouter()
+router = DefaultRouter()
 router.register(r'automates', AutomateViewSet)
 
 urlpatterns = [

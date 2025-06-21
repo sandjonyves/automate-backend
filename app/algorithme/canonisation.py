@@ -2,7 +2,7 @@ from typing import Set, Dict, Tuple
 from collections import defaultdict
 from queue import Queue
 
-class CanonicalAutomate:  # Renommé pour éviter la confusion avec le modèle
+class CanonicalAutomate:  
     def __init__(self, states: Set[str], alphabet: Set[str], transitions: Dict[Tuple[str, str], Set[str]], 
                  initial_state: str, final_states: Set[str]):
         self.states = states

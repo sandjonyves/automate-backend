@@ -6,7 +6,7 @@ class Automate(models.Model):
         ('NFA', 'Non Déterministe'),
         ('ε-NFA', 'Epsilon-NFA')
     ]
-
+    id = models.AutoField(primary_key=True) 
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     automaton_type = models.CharField(max_length=10, choices=AUTOMATON_TYPES, default='DFA')
