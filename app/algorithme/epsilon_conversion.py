@@ -42,6 +42,7 @@ def epsilon_closure(state, transitions):
     return closure
 
 
+
 def epsilon_afn_to_afn(states, alphabet, transitions):
     alphabet = [a for a in alphabet if a != "ε"]
     new_transitions = defaultdict(lambda: defaultdict(set))
@@ -56,10 +57,11 @@ def epsilon_afn_to_afn(states, alphabet, transitions):
             if target_states:
                 new_transitions[state][symbol] |= target_states
 
-    # Convert sets to lists
+    # Convertir les ensembles en listes pour la réponse JSON
     final_transitions = {}
     for src in new_transitions:
         final_transitions[src] = {}
         for sym in new_transitions[src]:
             final_transitions[src][sym] = list(new_transitions[src][sym])
+
     return final_transitions

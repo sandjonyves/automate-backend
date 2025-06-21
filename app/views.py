@@ -184,7 +184,7 @@ class AFNToEpsilonAFNView(APIView):
             return Response({"error": "Must be an AFN to convert to epsilon-AFN."}, status=400)
 
         result = afn_to_epsilon_afn(
-            initial_states=automate.initial_state,
+            
             states=automate.states,
             transitions=automate.transitions
         )
@@ -219,6 +219,7 @@ class AFDToRealAFNView(APIView):
         return Response(result, status=200)
 
 
+
 class EpsilonAFNToAFNView(APIView):
     def post(self, request, pk):
         try:
@@ -229,10 +230,11 @@ class EpsilonAFNToAFNView(APIView):
         if automate.is_deterministic:
             return Response({"error": "Not an epsilon-AFN (automate already deterministic)."}, status=400)
 
+        # Conversion de l'epsilon-AFN en AFN
         result = epsilon_afn_to_afn(
             states=automate.states,
             alphabet=automate.alphabet,
-            transitions=automate.transitions
+            transitions=automate.transitions.get("transitions", automate.transitions)
         )
 
         return Response({
@@ -242,7 +244,6 @@ class EpsilonAFNToAFNView(APIView):
             "final_states": automate.final_states,
             "transitions": result
         }, status=200)
-    
 
 
 
@@ -362,7 +363,7 @@ class MinimizeAFDView(APIView):
 
 
 class RegexToGlushkovAutomateView(APIView):
-    def post(self, request):
+    def post(self ,request):
         regex = request.data.get("regex")
         if not regex:
             return Response({"error": "regex is required."}, status=400)

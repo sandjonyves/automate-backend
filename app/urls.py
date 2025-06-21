@@ -7,6 +7,7 @@ from .views import RegexFromAutomateAPIView
 from .views  import AFDToAFDCView
 from .views import AutomateStateAnalysisView
 from .views import AutomateEmondageView
+from .views import AFDToRealAFNView
  #=================AJOUT DE STEFAN=======================
 from .views import AFNToEpsilonAFNView, EpsilonAFNToAFNView
 from .views import EpsilonClosureView
@@ -39,7 +40,7 @@ urlpatterns = [
   path("automates/<int:pk>/to-epsilon-afn-from-afd/", AFDToEpsilonAFNView.as_view(), name="afd-to-epsilon-afn"),
   path("automates/<int:pk>/from-regex/", ThomsomRegexToEpsilonAFNView.as_view(), name="regex-to-epsilon-afn"),
   path("automates/<int:pk>/minimize/", MinimizeAFDView.as_view(), name="minimize-afd"),
-  path("automates/<int:pk>/from-regex-glushkov/", RegexToGlushkovAutomateView.as_view(), name="regex-to-glushkov"), 
+  path("automates/from-regex-glushkov/", RegexToGlushkovAutomateView.as_view(), name="regex-to-glushkov"), 
   path("automates/<int:pk>/canonize/", CanonizeAutomateView.as_view(), name="canonize-automate"),
 
 
