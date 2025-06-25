@@ -4,7 +4,7 @@ from .algorithme.is_deterministe import is_deterministic_automaton
 class AutomateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Automate
-        fields = ['id', 'states', 'initial_state', 'final_states', 'alphabet', 'transitions', 'is_deterministic']
+        fields = ['id','name','description','automaton_type','states', 'initial_state', 'final_states', 'alphabet', 'transitions', 'is_deterministic']
 
     def validate(self, data):
         # automaton_type = data['automaton_type']
@@ -45,6 +45,7 @@ class AutomateSerializer(serializers.ModelSerializer):
             validated_data['initial_state'],
             validated_data['final_states']
         )
+        validated_data['automaton_type'] = 'DFA' if validated_data['is_deterministic'] else 'NFA'
         return super().create(validated_data)
       
 
