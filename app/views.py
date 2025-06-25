@@ -121,8 +121,8 @@ class AFDToAFDCView(APIView):
         except Automate.DoesNotExist:
             return Response({"error": "Automate not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        if not automate.is_deterministic:
-            return Response({"error": "Automaton must be deterministic (AFD)."}, status=400)
+        # if not automate.is_deterministic:
+        #     return Response({"error": "Automaton must be deterministic (AFD)."}, status=400)
 
         # Appel de l'algorithme de complétion
         result = afd_to_afdc(
@@ -131,6 +131,7 @@ class AFDToAFDCView(APIView):
             transitions=automate.transitions
         )
 
+        print(result)
         # Réponse complète avec les champs attendus par le frontend
         return Response({
             "states": result["states"],
@@ -820,7 +821,9 @@ class IntersectAutomateView(APIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)      
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
+
+
 class ComplementAutomateView(APIView):
     def post(self, request):
         try:

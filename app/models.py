@@ -16,7 +16,7 @@ class Automate(models.Model):
     initial_state = models.CharField(max_length=50)
     final_states = models.JSONField(default=list)
     transitions = models.JSONField(default=dict)
-    is_deterministic = models.BooleanField(default=False) 
+    is_deterministic = models.BooleanField(default=True) 
 
     def __str__(self):
         return self.name

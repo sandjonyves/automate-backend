@@ -1,22 +1,27 @@
 def afd_to_afdc(states, alphabet, transitions):
+    """
+    Complète un AFD en ajoutant un état puits, en format AFN-compatible (destinations = listes).
+    """
     states = [str(s) for s in states]
     alphabet = list(alphabet)
-    transitions = {str(k): {a: str(v) for a, v in vdict.items()} for k, vdict in transitions.items()}
-
-    sink = "P"  # état puits
-    all_states = set(states)
+    sink = "P"
     completed_transitions = {}
 
-    for state in all_states:
+    for state in states:
         completed_transitions[state] = {}
         for symbol in alphabet:
             if symbol in transitions.get(state, {}):
-                completed_transitions[state][symbol] = transitions[state][symbol]
+                dest = transitions[state][symbol]
+                # force la destination à être une liste
+                if isinstance(dest, list):
+                    completed_transitions[state][symbol] = [str(d) for d in dest]
+                else:
+                    completed_transitions[state][symbol] = [str(dest)]
             else:
-                completed_transitions[state][symbol] = sink
+                completed_transitions[state][symbol] = [sink]
 
-    # Ajout de l’état puits avec boucles sur tous les symboles
-    completed_transitions[sink] = {symbol: sink for symbol in alphabet}
+    completed_transitions[sink] = {symbol: [sink] for symbol in alphabet}
+    all_states = set(states)
     all_states.add(sink)
 
     return {
