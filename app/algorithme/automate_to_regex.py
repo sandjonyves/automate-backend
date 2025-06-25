@@ -55,22 +55,31 @@ def automate_to_regex(states, initial_state, final_states, transitions):
         return result_r1 + result_r2
     
     def union(r1, r2):
-        """Fait l'union de deux expressions régulières"""
+        """Fait l'union de deux expressions régulières tout en évitant les redondances logiques"""
         if not r1 or r1 == "∅":
             return r2 if r2 else "∅"
         if not r2 or r2 == "∅":
             return r1 if r1 else "∅"
         if r1 == r2:
             return r1
-        
+
         # Séparer les alternatives et éviter les doublons
         alts1 = set(split_alternatives(r1))
         alts2 = set(split_alternatives(r2))
-        all_alts = sorted(alts1.union(alts2))
         
-        if len(all_alts) == 1:
-            return all_alts[0]
-        return "+".join(all_alts)
+        # Supprimer les sous-expressions redondantes si une inclut l'autre
+        all_alts = sorted(alts1.union(alts2))
+        filtered_alts = []
+        for alt in all_alts:
+            if not any(alt != other and alt in other for other in all_alts):
+                filtered_alts.append(alt)
+
+        if not filtered_alts:
+            return "∅"
+        if len(filtered_alts) == 1:
+            return filtered_alts[0]
+        return "+".join(filtered_alts)
+
     
     def split_alternatives(expr):
         """Divise une expression en alternatives (gestion correcte des parenthèses)"""
@@ -97,7 +106,15 @@ def automate_to_regex(states, initial_state, final_states, transitions):
             alternatives.append(current)
         
         return alternatives
-    
+    def remove_redundant_unions(expr):
+        """Supprime les unions où une alternative est déjà incluse dans une autre"""
+        alts = split_alternatives(expr)
+        unique = []
+        for a in alts:
+            if not any(a != b and a in b for b in alts):
+                unique.append(a)
+        return "+".join(sorted(set(unique)))
+
     def is_balanced_parens(expr):
         """Vérifie si les parenthèses sont équilibrées"""
         count = 0
@@ -223,7 +240,5 @@ def automate_to_regex(states, initial_state, final_states, transitions):
     # Récupérer le résultat final
     result = R[S][F]
     result = simplify_regex(result)
-    
+    result = remove_redundant_unions(result)
     return result
-
-

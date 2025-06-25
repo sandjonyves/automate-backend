@@ -150,8 +150,8 @@ class Thompson:
             "transitions": {
                 start: {symbol: [end]}
             },
-            "start_state": start,
-            "accept_states": [end]
+            "initial_state": start,
+            "final_states": [end]
         }
 
     def create_epsilon(self):
@@ -167,51 +167,51 @@ class Thompson:
                 transitions[state] = trans
 
         # relier les fins de a1 au début de a2 par ε
-        for acc in a1["accept_states"]:
-            transitions.setdefault(acc, {}).setdefault("ε", []).append(a2["start_state"])
+        for acc in a1["final_states"]:
+            transitions.setdefault(acc, {}).setdefault("ε", []).append(a2["initial_state"])
 
         return {
             "states": list(set(a1["states"] + a2["states"])),
             "transitions": transitions,
-            "start_state": a1["start_state"],
-            "accept_states": a2["accept_states"]
+            "initial_state": a1["initial_state"],
+            "final_states": a2["final_states"]
         }
 
     def union(self, a1, a2):
         start = self.state_gen.new_state()
         end = self.state_gen.new_state()
         transitions = {
-            start: {"ε": [a1["start_state"], a2["start_state"]]},
+            start: {"ε": [a1["initial_state"], a2["initial_state"]]},
             **a1["transitions"],
             **a2["transitions"]
         }
 
-        for acc in a1["accept_states"] + a2["accept_states"]:
+        for acc in a1["final_states"] + a2["final_states"]:
             transitions.setdefault(acc, {}).setdefault("ε", []).append(end)
 
         return {
             "states": list(set([start, end] + a1["states"] + a2["states"])),
             "transitions": transitions,
-            "start_state": start,
-            "accept_states": [end]
+            "initial_state": start,
+            "final_states": [end]
         }
 
     def kleene_star(self, a):
         start = self.state_gen.new_state()
         end = self.state_gen.new_state()
         transitions = {
-            start: {"ε": [a["start_state"], end]},
+            start: {"ε": [a["initial_state"], end]},
             **a["transitions"]
         }
 
-        for acc in a["accept_states"]:
-            transitions.setdefault(acc, {}).setdefault("ε", []).extend([a["start_state"], end])
+        for acc in a["final_states"]:
+            transitions.setdefault(acc, {}).setdefault("ε", []).extend([a["initial_state"], end])
 
         return {
             "states": list(set([start, end] + a["states"])),
             "transitions": transitions,
-            "start_state": start,
-            "accept_states": [end]
+            "initial_state": start,
+            "final_states": [end]
         }
 
     def from_postfix(self, postfix):

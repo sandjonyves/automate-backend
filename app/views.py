@@ -93,26 +93,25 @@ class ConvertAFNtoAFDByIdAPIView(APIView):
 
 
 
-
-
 class RegexFromAutomateAPIView(APIView):
     def post(self, request, automate_id):
         try:
             automate = Automate.objects.get(id=automate_id)
         except Automate.DoesNotExist:
             return Response({"error": "Automate non trouvé."}, status=404)
-        print(automate)
-        # try:
-        expression = automate_to_regex(
+
+        try:
+            regex = automate_to_regex(
                 states=automate.states,
                 initial_state=automate.initial_state,
                 final_states=automate.final_states,
                 transitions=automate.transitions
             )
-        return Response({"regex": expression})
-        # except Exception as e:
-        #     return Response({"error": str(e)}, status=400)
 
+            return Response({"regex": regex}, status=200)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)  
 
 
 class AFDToAFDCView(APIView):
@@ -360,10 +359,10 @@ class ThompsonFromRegexView(APIView):
             postfix_expr = self.infix_to_postfix(regex_infix)
             thompson = Thompson()
             automate = thompson.from_postfix(postfix_expr)
-
+            print(automate)
             return Response({
                 "postfix": postfix_expr,
-                "automate": automate
+                **automate
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
@@ -423,6 +422,106 @@ class ThompsonFromRegexView(APIView):
 
         return output
 
+
+# AUTOMATON_TYPE = "NFA"  # ou 'AFN' si tu préfères
+# class ThompsonFromRegexView(APIView):
+#     """
+#     API endpoint: Convert a regex (infix) to a Thompson NFA and save it in DB
+#     """
+
+#     def post(self, request, *args, **kwargs):
+#         regex_infix = request.data.get("regex")
+#         name = request.data.get("name", "Thompson_NFA")
+
+#         if not regex_infix or not isinstance(regex_infix, str):
+#             return Response(
+#                 {"error": "You must provide 'regex' as a string."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         try:
+#             # 1. Convertir en postfix
+#             postfix_expr = self.infix_to_postfix(regex_infix)
+
+#             # 2. Construire l'automate avec Thompson
+#             thompson = Thompson()
+#             automate_data = thompson.from_postfix(postfix_expr)
+
+#             # 3. Créer et sauvegarder l'automate en DB
+#             # automate = Automate.objects.create(
+#             #     name=name,
+#             #     description=f"Automate généré depuis '{regex_infix}' avec l'algorithme de Thompson.",
+#             #     automaton_type=AUTOMATON_TYPE,
+#             #     alphabet=list(self.extract_alphabet(postfix_expr)),
+#             #     states=automate_data["states"],
+#             #     initial_state=automate_data["start_state"],
+#             #     final_states=automate_data["accept_states"],
+#             #     transitions=automate_data["transitions"],
+#             #     is_deterministic=False
+#             # )
+
+#             # 4. Répondre au frontend avec les données formatées
+#             return Response({
+                
+#                 "states": automate_data["states"],
+#                 "initial_state": automate_data["start_state"],
+#                 "final_states": automate_data["accept_states"],
+#                 "alphabet": list(self.extract_alphabet(postfix_expr)),
+#                 "transitions": automate_data["transitions"]
+#             }, status=status.HTTP_201_CREATED)
+
+#         except Exception as e:
+#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#     # ------------------------
+#     # 🔁 Utilitaires internes
+#     # ------------------------
+
+#     def precedence(self, op):
+#         return {'*': 3, '.': 2, '+': 1}.get(op, 0)
+
+#     def is_operator(self, c):
+#         return c in ['+', '.', '*']
+
+#     def insert_concat_symbols(self, expr):
+#         """
+#         Ajoute les symboles de concaténation '.' de façon explicite.
+#         Exemple : ab devient a.b
+#         """
+#         result = ""
+#         for i in range(len(expr)):
+#             c1 = expr[i]
+#             result += c1
+#             if i + 1 < len(expr):
+#                 c2 = expr[i + 1]
+#                 if (c1.isalnum() or c1 == ')' or c1 == '*') and (c2.isalnum() or c2 == '('):
+#                     result += '.'
+#         return result
+
+#     def infix_to_postfix(self, expr):
+#         expr = self.insert_concat_symbols(expr.replace(" ", ""))
+#         output, stack = [], []
+
+#         for token in expr:
+#             if token == '(':
+#                 stack.append(token)
+#             elif token == ')':
+#                 while stack and stack[-1] != '(':
+#                     output.append(stack.pop())
+#                 stack.pop()
+#             elif self.is_operator(token):
+#                 while stack and self.precedence(stack[-1]) >= self.precedence(token):
+#                     output.append(stack.pop())
+#                 stack.append(token)
+#             else:
+#                 output.append(token)
+
+#         while stack:
+#             output.extend(reversed(stack))
+#         return output
+
+#     def extract_alphabet(self, postfix):
+#         return set(c for c in postfix if c.isalnum())
 
 
 
