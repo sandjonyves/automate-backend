@@ -18,8 +18,7 @@ from .views import MinimizeAFDView
 from .views import CanonizeAutomateView
 
 
-from .views import RegexToEpsilonAFNView
-
+from .views import ThompsonFromRegexView
 from .views import AutomatonGlushkov
 
 
@@ -53,9 +52,10 @@ urlpatterns = [
   path("automates/<int:pk>/minimize/", MinimizeAFDView.as_view(), name="minimize-afd"),
   path("automates/<int:pk>/canonize/", CanonizeAutomateView.as_view(), name="canonize-automate"), 
 
-  path('from-regex/', RegexToEpsilonAFNView.as_view(), name="regex-to-epsilon-afn"), #thomsom
+  path('from-regex/', ThompsonFromRegexView.as_view(), name="regex-to-epsilon-afn"), #thomsom
 
-  path('build-automaton/', AutomatonGlushkov.as_view()),
+  path('build-automaton/', AutomatonGlushkov.as_view()),#gluskov
+
   path('union/', UnionAutomateView.as_view(), name='automate-union'),
   path('intersection/', IntersectAutomateView.as_view(), name='automate-intersection'),
   path('complement/', ComplementAutomateView.as_view(), name='automate-complement'),

@@ -19,9 +19,10 @@ from .algorithme.afd_to_afn import afd_to_afn
 from .algorithme.epsilon_closure import epsilon_closure
 from .algorithme.epsilon_afn_to_afd import epsilon_afn_to_afd
 from .algorithme.afd_to_epsilon_afn import afd_to_epsilon_afn
-from .algorithme.thompson import thompson_regex_to_epsilon_afn
+# from .algorithme.thompson import thompson_regex_to_epsilon_afn
 from .algorithme.glushkov import Glushkov
 from .algorithme.minimisation_moore import minimize_moore
+from .algorithme.thompson import Thompson
 from .algorithme.complement import (
     BaseModelAutomate,
     complement_automate,
@@ -338,16 +339,89 @@ class AFDToEpsilonAFNView(APIView):
 
 
 # thomsom pure
-class RegexToEpsilonAFNView(APIView): 
-    def post(self, request):
-        regex = request.data.get("regex")
-        if not regex:
-            return Response({"error": "No regex provided."}, status=400)
+
+
+
+class ThompsonFromRegexView(APIView):
+    """
+    API endpoint to convert a regular expression (in infix notation) into
+    an NFA using Thompson's construction algorithm.
+    """
+
+    def post(self, request, *args, **kwargs):
+        regex_infix = request.data.get("regex")
+        if not regex_infix or not isinstance(regex_infix, str):
+            return Response(
+                {"error": "You must provide a 'regex' as a string."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
-            result = thompson_regex_to_epsilon_afn(regex)
-            return Response(result, status=200)
+            postfix_expr = self.infix_to_postfix(regex_infix)
+            thompson = Thompson()
+            automate = thompson.from_postfix(postfix_expr)
+
+            return Response({
+                "postfix": postfix_expr,
+                "automate": automate
+            }, status=status.HTTP_200_OK)
+
         except Exception as e:
-            return Response({"error": str(e)}, status=400)
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def precedence(self, op):
+        if op == '*':
+            return 3
+        if op == '.':
+            return 2
+        if op == '+':
+            return 1
+        return 0
+
+    def is_operator(self, c):
+        return c in ['+', '.', '*']
+
+    def insert_concat_symbols(self, expr):
+        """
+        Ajoute des symboles de concaténation explicites (.) à l'expression.
+        Exemple : a(b+c)*d devient a.(b+c)*.d
+        """
+        result = ""
+        for i in range(len(expr)):
+            c1 = expr[i]
+            result += c1
+            if i + 1 < len(expr):
+                c2 = expr[i + 1]
+                if (c1.isalnum() or c1 == ')' or c1 == '*') and (c2.isalnum() or c2 == '('):
+                    result += '.'
+        return result
+
+    def infix_to_postfix(self, expr):
+        expr = self.insert_concat_symbols(expr.replace(" ", ""))
+        output = []
+        stack = []
+
+        for token in expr:
+            if token == '(':
+                stack.append(token)
+            elif token == ')':
+                while stack and stack[-1] != '(':
+                    output.append(stack.pop())
+                stack.pop()  # remove '('
+            elif self.is_operator(token):
+                while stack and self.precedence(stack[-1]) >= self.precedence(token):
+                    output.append(stack.pop())
+                stack.append(token)
+            else:
+                output.append(token)
+
+        while stack:
+            output.append(stack.pop())
+
+        return output
 
 
 
