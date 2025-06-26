@@ -24,9 +24,11 @@ def minimize_moore(states, alphabet, initial_state, final_states, transitions):
                 signature = []
                 for symbol in alphabet:
                     dest = transitions.get(state, {}).get(symbol)
+                    # Dans un DFA, la destination est une chaîne (pas une liste !)
+                    if isinstance(dest, list):
+                        dest = dest[0] if dest else None
                     if dest is not None:
-                        dest = str(dest)
-                        sig = find_block(dest, partitions)
+                        sig = find_block(str(dest), partitions)
                     else:
                         sig = None
                     signature.append(sig)
@@ -53,22 +55,18 @@ def minimize_moore(states, alphabet, initial_state, final_states, transitions):
     new_finals = list({state_map[s] for s in final_states})
     new_transitions = {}
 
-    for group in partitions:
-        rep = next(iter(group))
+    for p in partitions:
+        rep = next(iter(p))  # représentatif
         new_src = state_map[rep]
         new_transitions[new_src] = {}
+
         for symbol in alphabet:
             dest = transitions.get(rep, {}).get(symbol)
+            if isinstance(dest, list):
+                dest = dest[0] if dest else None
             if dest is not None:
-                if isinstance(dest, list):
-                    # Plusieurs cibles -> groupe d'états -> clé canonique
-                    dest_key = tuple(sorted(state_map[d] for d in dest))
-                    # Comme on veut un automate déterministe minimal, la cible est un seul état (groupe),
-                    # donc on peut prendre n'importe quel dans dest_key (ils sont égaux en minimisation)
-                    # Ici on prend le premier
-                    new_transitions[new_src][symbol] = dest_key[0]
-                else:
-                    new_transitions[new_src][symbol] = state_map[str(dest)]
+                new_transitions[new_src][symbol] = state_map[str(dest)]
+
     return {
         "states": new_states,
         "alphabet": alphabet,

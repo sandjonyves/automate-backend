@@ -1,6 +1,6 @@
 from .automate_analysis import identify_states
 
-def emonder_automate(states, initial_state, final_states, transitions, alphabet):
+def emonder_automate(automaton_type,is_deterministic,states, initial_state, final_states, transitions, alphabet):
     result = identify_states(states, initial_state, final_states, transitions)
     utiles = set(result["utiles"])
 
@@ -17,6 +17,8 @@ def emonder_automate(states, initial_state, final_states, transitions, alphabet)
                 norm_trans[src][sym] = filtered_dests
 
     return {
+        "automaton_type":automaton_type,
+        "is_deterministic":is_deterministic,
         "states": sorted(list(utiles)),
         "alphabet": list(alphabet),
         "initial_state": initial_state if initial_state in utiles else None,

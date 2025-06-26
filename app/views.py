@@ -65,15 +65,22 @@ class RegexFromEquationsAPIView(APIView):
 
 
 
-class ConvertAFNtoAFDByIdAPIView(APIView):
+class AFNtoAFDByIdAPIView(APIView):
     def post(self, request, automate_id):
         try:
             automate = Automate.objects.get(id=automate_id)
         except Automate.DoesNotExist:
             return Response({"error": "Automate non trouvé."}, status=404)
-
+        tmp_automate={
+                "alphabet":automate.alphabet,
+               "states":automate.states,
+                "initial_state":automate.initial_state,
+               "final_states":automate.final_states,
+                "transitions":automate.transitions
+        }
         if automate.is_deterministic:
-            return Response({"message": "Cet automate est déjà un AFD."})
+            return Response({"message": "Cet automate est déjà un AFD.",
+                              "afd":tmp_automate })
 
         try:
             afd_data = afn_to_afd(
@@ -83,6 +90,7 @@ class ConvertAFNtoAFDByIdAPIView(APIView):
                 final_states=automate.final_states,
                 transitions=automate.transitions
             )
+            print(afd_data)
             return Response({
                 "message": "Conversion réussie.",
                 "afd": afd_data
@@ -170,11 +178,14 @@ class AutomateEmondageView(APIView):
             return Response({"error": "Automate not found."}, status=404)
 
         result = emonder_automate(
-            states=automate.states,
-            initial_state=automate.initial_state,
-            final_states=automate.final_states,
-            transitions=automate.transitions,
-            alphabet=automate.alphabet
+            
+            automaton_type=automate.automaton_type,
+                is_deterministic=automate.is_deterministic,
+                states= automate.states,
+                alphabet= automate.alphabet,
+                transitions= automate.transitions,
+                initial_state= automate.initial_state,
+                final_states= automate.final_states,
         )
 
         return Response(result, status=200)
@@ -193,8 +204,8 @@ class AFNToEpsilonAFNView(APIView):
         except Automate.DoesNotExist:
             return Response({"error": "Automate not found."}, status=404)
 
-        if automate.is_deterministic:
-            return Response({"error": "Must be an AFN to convert to epsilon-AFN."}, status=400)
+        # if automate.is_deterministic:
+        #     return Response({"error": "Must be an AFN to convert to epsilon-AFN."}, status=400)
 
         result = afn_to_epsilon_afn(
             
@@ -240,8 +251,11 @@ class EpsilonAFNToAFNView(APIView):
         except Automate.DoesNotExist:
             return Response({"error": "Automate not found."}, status=404)
 
-        if automate.is_deterministic:
-            return Response({"error": "Not an epsilon-AFN (automate already deterministic)."}, status=400)
+        if  automate.is_deterministic :
+            return Response({"error": "This automate is already deterministic."}, status=400)
+
+        if "ε" not in automate.alphabet:
+            return Response({"error": "This automate has no ε-transitions to eliminate."}, status=400)
 
         # Conversion de l'epsilon-AFN en AFN
         result = epsilon_afn_to_afn(
@@ -424,107 +438,9 @@ class ThompsonFromRegexView(APIView):
         return output
 
 
-# AUTOMATON_TYPE = "NFA"  # ou 'AFN' si tu préfères
-# class ThompsonFromRegexView(APIView):
-#     """
-#     API endpoint: Convert a regex (infix) to a Thompson NFA and save it in DB
-#     """
-
-#     def post(self, request, *args, **kwargs):
-#         regex_infix = request.data.get("regex")
-#         name = request.data.get("name", "Thompson_NFA")
-
-#         if not regex_infix or not isinstance(regex_infix, str):
-#             return Response(
-#                 {"error": "You must provide 'regex' as a string."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         try:
-#             # 1. Convertir en postfix
-#             postfix_expr = self.infix_to_postfix(regex_infix)
-
-#             # 2. Construire l'automate avec Thompson
-#             thompson = Thompson()
-#             automate_data = thompson.from_postfix(postfix_expr)
-
-#             # 3. Créer et sauvegarder l'automate en DB
-#             # automate = Automate.objects.create(
-#             #     name=name,
-#             #     description=f"Automate généré depuis '{regex_infix}' avec l'algorithme de Thompson.",
-#             #     automaton_type=AUTOMATON_TYPE,
-#             #     alphabet=list(self.extract_alphabet(postfix_expr)),
-#             #     states=automate_data["states"],
-#             #     initial_state=automate_data["start_state"],
-#             #     final_states=automate_data["accept_states"],
-#             #     transitions=automate_data["transitions"],
-#             #     is_deterministic=False
-#             # )
-
-#             # 4. Répondre au frontend avec les données formatées
-#             return Response({
-                
-#                 "states": automate_data["states"],
-#                 "initial_state": automate_data["start_state"],
-#                 "final_states": automate_data["accept_states"],
-#                 "alphabet": list(self.extract_alphabet(postfix_expr)),
-#                 "transitions": automate_data["transitions"]
-#             }, status=status.HTTP_201_CREATED)
-
-#         except Exception as e:
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#     # ------------------------
-#     # 🔁 Utilitaires internes
-#     # ------------------------
-
-#     def precedence(self, op):
-#         return {'*': 3, '.': 2, '+': 1}.get(op, 0)
-
-#     def is_operator(self, c):
-#         return c in ['+', '.', '*']
-
-#     def insert_concat_symbols(self, expr):
-#         """
-#         Ajoute les symboles de concaténation '.' de façon explicite.
-#         Exemple : ab devient a.b
-#         """
-#         result = ""
-#         for i in range(len(expr)):
-#             c1 = expr[i]
-#             result += c1
-#             if i + 1 < len(expr):
-#                 c2 = expr[i + 1]
-#                 if (c1.isalnum() or c1 == ')' or c1 == '*') and (c2.isalnum() or c2 == '('):
-#                     result += '.'
-#         return result
-
-#     def infix_to_postfix(self, expr):
-#         expr = self.insert_concat_symbols(expr.replace(" ", ""))
-#         output, stack = [], []
-
-#         for token in expr:
-#             if token == '(':
-#                 stack.append(token)
-#             elif token == ')':
-#                 while stack and stack[-1] != '(':
-#                     output.append(stack.pop())
-#                 stack.pop()
-#             elif self.is_operator(token):
-#                 while stack and self.precedence(stack[-1]) >= self.precedence(token):
-#                     output.append(stack.pop())
-#                 stack.append(token)
-#             else:
-#                 output.append(token)
-
-#         while stack:
-#             output.extend(reversed(stack))
-#         return output
-
-#     def extract_alphabet(self, postfix):
-#         return set(c for c in postfix if c.isalnum())
-
-
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 class MinimizeAFDView(APIView):
     def post(self, request, pk):
@@ -533,21 +449,94 @@ class MinimizeAFDView(APIView):
         except Automate.DoesNotExist:
             return Response({"error": "Automate not found."}, status=404)
 
+        def remove_unreachable_states(states, transitions, initial_state):
+            # Ensemble des états accessibles
+            reachable = {initial_state}
+            to_explore = [initial_state]
+
+            # Recherche en largeur pour trouver tous les états accessibles
+            while to_explore:
+                current = to_explore.pop()
+                # Vérifier si l'état courant a des transitions définies
+                if current in transitions:
+                    for symbol in transitions[current]:
+                        next_state = transitions[current][symbol]
+                        if next_state not in reachable:
+                            reachable.add(next_state)
+                            to_explore.append(next_state)
+
+            # Filtrer les états pour ne garder que ceux accessibles
+            new_states = [s for s in states if s in reachable]
+            # Filtrer les transitions pour ne garder que celles des états accessibles
+            new_transitions = {
+                s: transitions[s] for s in reachable if s in transitions
+            }
+            return new_states, new_transitions
+
         if not automate.is_deterministic:
-            return Response({"error": "This automate is not deterministic. Minimization requires an AFD."}, status=400)
+            # Convertir AFN en AFD
+            automate_converted = afn_to_afd(
+                alphabet=automate.alphabet,
+                states=automate.states,
+                initial_state=automate.initial_state,
+                final_states=automate.final_states,
+                transitions=automate.transitions
+            )
 
-        result = minimize_moore(
-            states=automate.states,
-            alphabet=automate.alphabet,
-            initial_state=automate.initial_state,
-            final_states=automate.final_states,
-            transitions=automate.transitions
-        )
+            # Supprimer les états inaccessibles
+            new_states, new_transitions = remove_unreachable_states(
+                automate_converted['states'],
+                automate_converted['transitions'],
+                automate_converted['initial_state']
+            )
 
-        return Response(result, status=200)
-    
+            # Mettre à jour automate_converted
+            automate_converted['states'] = new_states
+            automate_converted['transitions'] = new_transitions
+            automate_converted['final_states'] = [s for s in automate_converted['final_states'] if s in new_states]
 
+            # Convertir en AFD complet
+            automate_result = afd_to_afdc(
+                states=automate_converted['states'],
+                alphabet=automate_converted['alphabet'],
+                transitions=automate_converted['transitions']
+            )
 
+            # Minimiser avec l'algorithme de Moore
+            result = minimize_moore(
+                states=automate_result["states"],
+                alphabet=automate_result["alphabet"],
+                initial_state=automate_converted['initial_state'],
+                final_states=automate_converted['final_states'],
+                transitions=automate_result["transitions"]
+            )
+
+            return Response(result, status=200)
+        else:
+            # Supprimer les états inaccessibles
+            new_states, new_transitions = remove_unreachable_states(
+                automate.states,
+                automate.transitions,
+                automate.initial_state
+            )
+
+            # Convertir en AFD complet
+            automate_result = afd_to_afdc(
+                states=new_states,
+                alphabet=automate.alphabet,
+                transitions=new_transitions
+            )
+
+            # Minimiser avec l'algorithme de Moore
+            result = minimize_moore(
+                states=automate_result["states"],
+                alphabet=automate_result["alphabet"],
+                initial_state=automate.initial_state,
+                final_states=[s for s in automate.final_states if s in new_states],
+                transitions=automate_result["transitions"]
+            )
+
+            return Response(result, status=200)
 
 
 import json
@@ -648,47 +637,55 @@ def parse_transitions(raw_transitions: dict) -> Dict[Tuple[str, str], Set[str]]:
 class CanonizeAutomateView(APIView):
     def get(self, request, pk):
         try:
-            # Récupération de l'automate depuis la base de données
-            automate_instance = Automate.objects.get(pk=pk)
+            automate = Automate.objects.get(pk=pk)
+        except Automate.DoesNotExist:
+            return Response({"error": "Automate not found."}, status=404)
 
-            # Création de l'automate canonique (via JSONField, pas besoin de eval !)
-            automate = CanonicalAutomate(
-                states=set(automate_instance.states),
-                alphabet=set(automate_instance.alphabet),
-                transitions=parse_transitions(automate_instance.transitions),
-                initial_state=automate_instance.initial_state,
-                final_states=set(automate_instance.final_states)
+        if not automate.is_deterministic:
+            # Convert AFN to AFD
+            automate_converted = afn_to_afd(
+                alphabet=automate.alphabet,
+                states=automate.states,
+                initial_state=automate.initial_state,
+                final_states=automate.final_states,
+                transitions=automate.transitions
             )
-
-            # Canonisation
-            canonized_automate = canonize(automate)
-
-            # Sérialisation des transitions pour les rendre compatibles JSON
-            transitions_serialized = {}
-            for (from_state, symbol), to_states in canonized_automate.transitions.items():
-                if from_state not in transitions_serialized:
-                    transitions_serialized[from_state] = {}
-                transitions_serialized[from_state][symbol] = list(to_states)
-
-            # Réponse à envoyer
-            response_data = {
-                'states': list(canonized_automate.states),
-                'alphabet': list(canonized_automate.alphabet),
-                'transitions': transitions_serialized,
-                'initial_state': canonized_automate.initial_state,
-                'final_states': list(canonized_automate.final_states)
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except ObjectDoesNotExist:
-            return Response({'error': 'Automate not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
+            
+            # Convert to complete AFD
+            automate_result = afd_to_afdc(
+                states=automate_converted['states'],
+                alphabet=automate_converted['alphabet'],
+                transitions=automate_converted['transitions']
+            )
+            
+            # Minimize using Moore's algorithm
+            result = minimize_moore(
+                states=automate_result["states"],
+                alphabet=automate_result["alphabet"],
+                initial_state=automate_converted['initial_state'],
+                final_states=automate_converted['final_states'],
+                transitions=automate_result["transitions"]
+            )
+            
+            return Response(result, status=200)
+        else:
+            # Convert to complete AFD
+            automate_result = afd_to_afdc(
+                states=automate.states,
+                alphabet=automate.alphabet,
+                transitions=automate.transitions
+            )
+            
+            # Minimize using Moore's algorithm
+            result = minimize_moore(
+                states=automate_result["states"],
+                alphabet=automate_result["alphabet"],
+                initial_state=automate.initial_state,
+                final_states=automate.final_states,
+                transitions=automate_result["transitions"]
+            )
+            
+            return Response(result, status=200)
 
 
 class UnionAutomateView(APIView):

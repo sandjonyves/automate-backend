@@ -1,13 +1,13 @@
 from rest_framework import serializers
 from .models import Automate
 from .algorithme.is_deterministe import is_deterministic_automaton
+
 class AutomateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Automate
-        fields = ['id','name','description','automaton_type','states', 'initial_state', 'final_states', 'alphabet', 'transitions', 'is_deterministic']
+        fields = ['id', 'name', 'description', 'automaton_type', 'states', 'initial_state', 'final_states', 'alphabet', 'transitions', 'is_deterministic']
 
     def validate(self, data):
-        # automaton_type = data['automaton_type']
         states = data['states']
         initial = data['initial_state']
         finals = data['final_states']
@@ -38,22 +38,38 @@ class AutomateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        validated_data['is_deterministic'] = is_deterministic_automaton(
-            validated_data['states'],
-            validated_data['alphabet'],
-            validated_data['transitions'],
-            validated_data['initial_state'],
-            validated_data['final_states']
-        )
-        validated_data['automaton_type'] = 'DFA' if validated_data['is_deterministic'] else 'NFA'
+        # Vérifier si l'alphabet contient 'ε'
+        if 'ε' in validated_data['alphabet']:
+            validated_data['is_deterministic'] = False
+            validated_data['automaton_type'] = 'ε-NFA'
+        else:
+            validated_data['is_deterministic'] = is_deterministic_automaton(
+                validated_data['states'],
+                validated_data['alphabet'],
+                validated_data['transitions'],
+                validated_data['initial_state'],
+                validated_data['final_states']
+            )
+            validated_data['automaton_type'] = 'DFA' if validated_data['is_deterministic'] else 'NFA'
+
         return super().create(validated_data)
-      
 
     def update(self, instance, validated_data):
-        validated_data['is_deterministic'] = validated_data.get('automaton_type') == 'DFA'
+        # Vérifier si l'alphabet contient 'ε'
+        if 'ε' in validated_data.get('alphabet', instance.alphabet):
+            validated_data['is_deterministic'] = False
+            validated_data['automaton_type'] = 'ε-NFA'
+        else:
+            validated_data['is_deterministic'] = is_deterministic_automaton(
+                validated_data.get('states', instance.states),
+                validated_data.get('alphabet', instance.alphabet),
+                validated_data.get('transitions', instance.transitions),
+                validated_data.get('initial_state', instance.initial_state),
+                validated_data.get('final_states', instance.final_states)
+            )
+            validated_data['automaton_type'] = 'DFA' if validated_data['is_deterministic'] else 'NFA'
+
         return super().update(instance, validated_data)
-
-
 
 class EquationSystemSerializer(serializers.Serializer):
     equations = serializers.DictField(child=serializers.CharField())
