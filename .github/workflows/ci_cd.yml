@@ -23,7 +23,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-  setup-backend:
+  backend-setup:
     name: setup backend 
     runs-on: ubuntu-latest
     needs: build
