@@ -33,9 +33,9 @@ jobs:
         run: |
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
 
-      - name: run migrations
-        run: |
-          python manage.py migrate
+      # - name: run migrations
+      #   run: |
+      #     python manage.py migrate
 
 
   docker-backend:
