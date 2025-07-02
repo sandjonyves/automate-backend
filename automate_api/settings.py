@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import dj_database_url
 import os
+from decouple import config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -88,7 +89,9 @@ WSGI_APPLICATION = 'automate_api.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL')
+        default=config('DATABASE_URL'),
+        conn_max_age=600,     # améliore les performances sur le cloud
+        ssl_require=True      # force l'utilisation de SSL (obligatoire avec Neon, Render, etc.)
     )
 }
 # Password validation
@@ -134,4 +137,8 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = ['https://tp-automate-frontend.onrender.com']
 
 
+STATIC_URL = '/static/'
+
+# Ajoute ceci :
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
