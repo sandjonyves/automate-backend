@@ -27,7 +27,8 @@ SECRET_KEY = 'django-insecure-$e6*7kwkunpvjxg_-na*n_cv&h(d=&ebdne*zv&m8%$%vzay^a
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://tp-automate-latest.onrender.com']
+ALLOWED_HOSTS = ['tp-automate-latest.onrender.com']
+
 
 
 
